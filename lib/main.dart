@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(const MyApp());
 }
@@ -43,13 +45,15 @@ class BodyRouter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Navigator(
+      key: navigatorKey,
       initialRoute: '1',
       onGenerateRoute: interceptor(context),
       observers: [MyRouteObserver(context)],
     );
   }
 
-  Route<MaterialPageRoute> Function(RouteSettings) interceptor (BuildContext context) {
+  Route<MaterialPageRoute> Function(RouteSettings) interceptor(
+      BuildContext context) {
     return (RouteSettings settings) {
       WidgetBuilder builder = switch (settings.name) {
         "1" => (context) => const FirstPage(),
@@ -60,7 +64,6 @@ class BodyRouter extends StatelessWidget {
       return MaterialPageRoute(builder: builder, settings: settings);
     };
   }
-
 }
 
 class LeadingIcon extends StatelessWidget {
@@ -69,7 +72,7 @@ class LeadingIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ( isBell ) ? _circleIcon(context) : _arrowIcon(context);
+    return (isBell) ? _circleIcon(context) : _arrowIcon(context);
   }
 
   Widget _circleIcon(BuildContext context) {
@@ -87,7 +90,7 @@ class LeadingIcon extends StatelessWidget {
       icon: const Icon(Icons.arrow_back),
       iconSize: 40,
       onPressed: () {
-        Navigator.of(context).pushNamed('2');
+        Navigator.of(navigatorKey.currentContext!).pop();
       },
     );
   }
@@ -98,14 +101,18 @@ class FirstPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-        child: ElevatedButton(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ElevatedButton(
           onPressed: () {
             Navigator.of(context).pushNamed('2');
           },
           child: const Text("Go to Second Page"),
         ),
-      );
+      ],
+    );
   }
 }
 
@@ -114,13 +121,22 @@ class SecondPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).pushNamed('3');
-        },
-        child: const Text("Go to Third Page"),
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pushNamed('3');
+          },
+          child: const Text("Go to Third Page"),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text("Back"),
+        ),
+      ],
     );
   }
 }
@@ -148,22 +164,35 @@ class MyRouteObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     String? routeName = previousRoute?.settings.name;
-    if (routeName != null) {
-      context.read<LeadingIconStatus>().currentRoute(routeName);
+    String? previousRouteName = previousRoute?.settings.name;
+    if (routeName != null && previousRouteName != null) {
+      print("pop : current(${route.settings.name}) prev($routeName)");
+    } else {
+      print("pop : current(${route.settings.name})");
+    }
+
+    if (previousRoute != null) {
+      context.read<LeadingIconStatus>().currentRoute(previousRouteName!);
     }
     super.didPop(route, previousRoute);
   }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    String? routeName = previousRoute?.settings.name;
+    String? routeName = route.settings.name;
+    String? prevRouteName = previousRoute?.settings.name;
+    if (routeName != null && prevRouteName != null) {
+      print("push : current($routeName) prev($prevRouteName)");
+    } else if (routeName != null){
+      print("push : current($routeName)");
+    }
+
     if (routeName != null) {
       context.read<LeadingIconStatus>().currentRoute(routeName);
     }
     super.didPush(route, previousRoute);
   }
 }
-
 
 class LeadingIconStatus extends ChangeNotifier {
   bool isBell = true;
